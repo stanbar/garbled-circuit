@@ -54,7 +54,7 @@ def generate_circuit():
     print(f'e_table {e_table}')
 
     out_decoding_table = [
-            encrypt(H(wire_c.label, "out")[:1], wire_c.value) for wire_c in sorted_labels_wire_c
+            encrypt(H(wire_c.label, "out"), wire_c.value) for wire_c in sorted_labels_wire_c
             ]
 
     print(f'out_decoding_table {out_decoding_table}')
@@ -67,13 +67,11 @@ def generate_circuit():
             ]
 
 
-    print(dec_table)
+    print(f'dec_table: {dec_table}')
 
     alice_wealth = random.randint(0, X_size-1)
     print(alice_wealth)
 
-    bob_wealth = int(input(f"enter value in range 0 to %d: " % (X_size-1)))
-    print(bob_wealth)
     return (
             labels_wire_a,
             labels_wire_b,
