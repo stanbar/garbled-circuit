@@ -44,7 +44,7 @@ def generate_circuit():
     print(f'labels_b', labels_wire_b)
     print(f'labels_c', labels_wire_c)
 
-    functionality = lambda a,b : int(a > b)
+    functionality = lambda a,b : int(a < b)
 
 
     e_table = [
