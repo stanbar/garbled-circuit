@@ -20,4 +20,9 @@ To make such functionality private, the first party $P_1$, encrypts each row usi
 
 To optimise the size of the table we use so-called point-and-permute.
 
+## Usage
+
+This project relies on Python@3.10 for [The New Type Annotations](https://www.blog.pythonlibrary.org/2021/09/11/python-3-10-simplifies-unions-in-type-annotations/).
+
+
 
