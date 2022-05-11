@@ -1,5 +1,5 @@
 from typing import NamedTuple
-from random import random
+from random import randint, getrandbits
 
 Id = int
 
@@ -9,12 +9,15 @@ class Wire(NamedTuple):
     select_bit: int
 
 
-class Gate(NamedTuple):
+class Gate():
     id: int
     type: str
     inputs: list[int]
 
-    def __init__(self, id, type, inputs):
+    def __init__(self, id:int, type:str, inputs: list[int]):
+        self.id = id
+        self.type = type
+        self.inputs = inputs
         operator = {
                 'GEQ': lambda x: x[0] > x[1],
                 'LEQ': lambda x: x[0] < x[1],
@@ -24,6 +27,7 @@ class Gate(NamedTuple):
                 'NOT': lambda x: ~x[0],
                 'NONE': lambda x: x[0]
         }[type]
+        
         self.create_garbled_table(operator)
 
     def create_garbled_table(self, operator):
@@ -36,8 +40,8 @@ class Circuit():
     out: list[int]
     gates: list[Gate]
     wires: list[Wire]
-    pbits: dict[Wire, int] = {}
-    keys: dict[Id, tuple[int,int]] = {}
+    pbits: dict[Wire, int]
+    keys: dict[int, tuple[int,int]]
     garbled_tables: dict[Wire, int] = {}
 
     def __init__(self, alice: list[int], bob: list[int], out: list[int], gates: list[Gate], kappa: int):
@@ -60,12 +64,12 @@ class Circuit():
 
     
     def generate_keys(self, kappa: int):
-        self.keys = {id: (random.getrandbits(kappa), random.getrandbits(kappa)) for (id) in self.wires}
+        self.keys = {id: (getrandbits(kappa), getrandbits(kappa)) for (id) in self.wires}
 
 
 
     def generate_pbits(self):
-        self.pbits = {id: random.randint(0, 1) for (id) in self.wires}
+        self.pbits = {id: randint(0, 1) for (id) in self.wires}
 
-one_bit_comparator = Circuit(alice=[1], bob=[2], out=[3], gates=[Gate(3, "CMP", [1,2])])
+one_bit_comparator = Circuit(alice=[1], bob=[2], out=[3], gates=[Gate(3, "GEQ", [1,2])], kappa=8)
 
