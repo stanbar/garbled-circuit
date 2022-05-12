@@ -1,7 +1,6 @@
 import unittest
 from circuit_generator import encode, decode
 
-
 class TestCircuitGenerator(unittest.TestCase):
     
         def test_encoding_decoding(self):
@@ -11,6 +10,7 @@ class TestCircuitGenerator(unittest.TestCase):
             encoded = encode(label, pbit, kappa)
             decoded = decode(encoded, kappa)
             self.assertEqual((label, pbit), decoded)
+
 
         def test_encoding_too_large_key_fails(self):
             kappa = 8
