@@ -24,7 +24,6 @@ def encrypt(key: int, value: bytes | int, kappa: int) -> bytes:
         value = int.from_bytes(value, byteorder='big')
     elif isinstance(value,int):
         assert value.bit_length() <= kappa
-        value = value
 
 
     result = value ^ key

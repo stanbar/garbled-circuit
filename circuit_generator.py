@@ -17,6 +17,7 @@ class Wire(NamedTuple):
     select_bit: int
 
 class Circuit(NamedTuple):
+    name: str
     alice: list[Id]
     bob: list[Id]
     out: list[Id]
@@ -25,13 +26,13 @@ class Circuit(NamedTuple):
 GateFunctions = {
     'AND': lambda x, y: x and y,
     'OR': lambda x, y: x or y,
-    'NOT': lambda x: ~x,
+    'NOT': lambda x: not x,
     'XOR': lambda x, y: x ^ y,
-    'NAND':  lambda x, y: ~(x and y),
-    'NOR': lambda x, y: ~(x or y),
-    'XNOR':  lambda x, y: ~(x ^ y),
-    'GEQ': lambda x, y: x >= y,
-    'LEQ': lambda x, y: x <= y,
+    'NAND':  lambda x, y: not (x and y),
+    'NOR': lambda x, y: not (x or y),
+    'XNOR':  lambda x, y: not (x ^ y),
+    'GEQ': lambda x, y: x > y,
+    'LEQ': lambda x, y: x < y,
 }
 
 
@@ -76,8 +77,6 @@ class GarbledGate():
                 key_out = self.keys[out][bit_out]
 
                 msg = encode(key_out, encr_bit_out, kappa)
-                print(f"key_out: {key_out}, encr_bit_out: {encr_bit_out}")
-                print(f"msg: {msg}")
 
                 garbled_table[(encr_bit_a, encr_bit_b)] = encrypt(key_a, encrypt(key_b, msg, kappa), kappa)
 
@@ -165,10 +164,8 @@ def evaluate(circuit: Circuit,
         key_b, encr_bit_b = wire_inputs[gate_in[1]]
         encr_msg = garbled_tables[gate_id][(encr_bit_a, encr_bit_b)]
         msg = encrypt(key_b, encrypt(key_a, encr_msg, kappa), kappa)
-        print(f"msg: {msg}")
         if msg:
             pickled = decode(msg, kappa)
-            print(f"pickled: {pickled}")
             wire_inputs[gate_id] = pickled
 
     # After all gates have been evaluated, we populate the dict of results
@@ -177,53 +174,72 @@ def evaluate(circuit: Circuit,
         pbit_out = pbits_out[out]
         evaluation[out] = wire_input ^ pbit_out
 
-    print(evaluation)
     return evaluation
 
 
 if __name__ == "__main__":
     kappa = 8
-    circuit = Circuit(alice=[1], bob=[2], out=[3], gates=[Gate(3, "XOR", [1,2])])
-    garbled_circuit = GarbledCircuit(circuit, kappa)
+    circuits = [
+        Circuit(name="XOR", alice=[1], bob=[2], out=[3], gates=[Gate(3, "XOR", [1,2])]),
+        Circuit(name="AND", alice=[1], bob=[2], out=[3], gates=[Gate(3, "AND", [1,2])]),
+        Circuit(name="GEQ", alice=[1], bob=[2], out=[3], gates=[Gate(3, "GEQ", [1,2])]),
+        Circuit(name="LEQ", alice=[1], bob=[2], out=[3], gates=[Gate(3, "LEQ", [1,2])]),
+        Circuit(name="LEQ", alice=[1], bob=[2], out=[3], gates=[Gate(3, "NAND", [1,2])]),
+        Circuit(name="MILLIONERE", alice=[1,2], bob=[3,4], out=[13], gates=[
+            Gate(5, "NAND", [3,4]),
+            Gate(6, "AND", [1,5]),
+            Gate(7, "AND", [1,2]),
+            Gate(8, "NAND", [3,3]),
+            Gate(9, "NAND", [4,4]),
+            Gate(10, "OR", [2,9]),
+            Gate(11, "AND", [8,10]),
+            Gate(12, "OR", [6,7]),
+            Gate(13, "OR", [11,12]),
+        ])
+    ]
+    for circuit in circuits:
+        garbled_circuit = GarbledCircuit(circuit, kappa)
 
-    garbled_tables = garbled_circuit.get_garbled_tables()
-    pbits_out = garbled_circuit.get_pbits_out()
-    pbits = garbled_circuit.pbits
+        garbled_tables = garbled_circuit.get_garbled_tables()
+        pbits_out = garbled_circuit.get_pbits_out()
+        pbits = garbled_circuit.pbits
 
-    a_wires = circuit.alice
-    b_wires = circuit.bob
-    keys = garbled_circuit.keys
-    outputs = circuit.out
-
-
-    a_inputs = {}  # map from Alice's wires to (key, encr_bit) inputs
-    b_inputs = {}  # map from Bob's wires to (key, encr_bit) inputs
-    pbits_out = {w: pbits[w] for w in outputs}  # p-bits of outputs
-    N = len(a_wires) + len(b_wires)
+        a_wires = circuit.alice
+        b_wires = circuit.bob
+        keys = garbled_circuit.keys
+        outputs = circuit.out
 
 
-    # Generate all possible inputs for both Alice and Bob
-    for bits in [format(n, 'b').zfill(N) for n in range(2**N)]:
-        bits_a = [int(b) for b in bits[:len(a_wires)]]  # Alice's inputs
-        bits_b = [int(b) for b in bits[N - len(b_wires):]]  # Bob's inputs
+        a_inputs = {}  # map from Alice's wires to (key, encr_bit) inputs
+        b_inputs = {}  # map from Bob's wires to (key, encr_bit) inputs
+        pbits_out = {w: pbits[w] for w in outputs}  # p-bits of outputs
+        N = len(a_wires) + len(b_wires)
 
-        # Map Alice's wires to (key, encr_bit)
-        for i in range(len(a_wires)):
-            a_inputs[a_wires[i]] = (keys[a_wires[i]][bits_a[i]],
-                                    pbits[a_wires[i]] ^ bits_a[i])
 
-        # Map Bob's wires to (key, encr_bit)
-        for i in range(len(b_wires)):
-            b_inputs[b_wires[i]] = (keys[b_wires[i]][bits_b[i]],
-                                    pbits[b_wires[i]] ^ bits_b[i])
+        print(f"============ {circuit.name} ============")
+        # Generate all possible inputs for both Alice and Bob
+        for bits in [format(n, 'b').zfill(N) for n in range(2**N)]:
+            bits_a = [int(b) for b in bits[:len(a_wires)]]  # Alice's inputs
+            bits_b = [int(b) for b in bits[N - len(b_wires):]]  # Bob's inputs
 
-        result = evaluate(circuit, garbled_tables, pbits_out, a_inputs, b_inputs, kappa)
+            # Map Alice's wires to (key, encr_bit)
+            for i in range(len(a_wires)):
+                a_inputs[a_wires[i]] = (keys[a_wires[i]][bits_a[i]],
+                                        pbits[a_wires[i]] ^ bits_a[i])
 
-        # Format output
-        str_bits_a = ' '.join(bits[:len(a_wires)])
-        str_bits_b = ' '.join(bits[len(a_wires):])
-        str_result = ' '.join([str(result[w]) for w in outputs])
+            # Map Bob's wires to (key, encr_bit)
+            for i in range(len(b_wires)):
+                b_inputs[b_wires[i]] = (keys[b_wires[i]][bits_b[i]],
+                                        pbits[b_wires[i]] ^ bits_b[i])
 
-        print(f"  Alice{a_wires} = {str_bits_a} "
-                f"Bob{b_wires} = {str_bits_b}  "
-                f"Outputs{outputs} = {str_result}")
+            result = evaluate(circuit, garbled_tables, pbits_out, a_inputs, b_inputs, kappa)
+
+            # Format output
+            str_bits_a = ' '.join(bits[:len(a_wires)])
+            str_bits_b = ' '.join(bits[len(a_wires):])
+            str_result = ' '.join([str(result[w]) for w in outputs])
+
+
+            print(f"  Alice{a_wires} = {str_bits_a} "
+                    f"Bob{b_wires} = {str_bits_b}  "
+                    f"Outputs{outputs} = {str_result}")
