@@ -26,3 +26,8 @@ This project relies on Python@3.10 for [The New Type Annotations](https://www.bl
 
 
 
+## Testing
+
+```sh
+python -m unittest tests
+```
