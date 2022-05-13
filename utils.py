@@ -1,30 +1,65 @@
-from random import randint, getrandbits
+from random import randint, getrandbits 
+from hashlib import sha512
+from secrets import token_bytes
+from math import ceil
 
 def flip_coin() -> int:
     return randint(0,1)
 
-def gen_label(kappa: int) -> int:
-    return getrandbits(kappa-1)
+def gen_label(kappa: int) -> bytes:
+    return token_bytes(kappa)
 
-def encode(label:int, pbit:int, kappa: int) -> int:
-    assert label.bit_length() <= kappa - 1 # Key must be one bit smaller than kappa because it must fit pbit
-    mask = (1 << kappa) - 1  # Mask of kappa 1s
-    return (label << 1) & mask | pbit
+def encode(key:bytes, pbit:int, kappa: int) -> bytes:
+    assert len(key) == kappa # Key must be one bit smaller than kappa because it must fit pbit
+    assert pbit == 0 or pbit == 1
+    # pad pbit with random bits
+    
+    pbit_padded = (getrandbits(7-1) << 1 | pbit).to_bytes(1, 'big')
+    encoded = key + pbit_padded
+    assert len(encoded) == kappa + 1
+    return encoded
 
-def decode(value:int|bytes, kappa: int) -> tuple[int,int]:
-    if isinstance(value, bytes):
-        value = int.from_bytes(value, byteorder='big')
+def decode(value:bytes, kappa: int) -> tuple[bytes, int]:
+    label = value[:-1]
+    assert len(label) == kappa
+    pbit = value[-1] & 1
 
-    assert value.bit_length() <= kappa
-    return value >> 1, value & 1
+    assert pbit == 1 or pbit == 0
+    return label, pbit
 
-def encrypt(key: int, value: bytes | int, kappa: int) -> bytes:
-    if isinstance(value, bytes):
-        assert len(value) <= kappa//8
-        value = int.from_bytes(value, byteorder='big')
-    elif isinstance(value,int):
-        assert value.bit_length() <= kappa
+def encrypt(index:int, key_one: bytes, key_two: bytes, value: bytes, method: str, kappa: int) -> bytes:
+    if method == 'xor':
+        return encrypt_xor(key_two, encrypt_xor(key_one, value, kappa), kappa)
+    elif method == 'hash':
+        return decrypt_hash(index, key_one, key_two, value, kappa)
+    else:
+        raise Exception('Unknown method')
 
+def decrypt(index:int, key_one: bytes, key_two: bytes, value: bytes, method: str, kappa: int) -> bytes:
+    if method == 'xor':
+        return encrypt_xor(key_two, encrypt_xor(key_one, value, kappa), kappa)
+    elif method == 'hash':
+        return encrypt_hash(index, key_one, key_two, value, kappa)
+    else:
+        raise Exception('Unknown method')
 
-    result = value ^ key
-    return int.to_bytes(result, kappa//8, 'big')
+def encrypt_xor(key: bytes, value: bytes, kappa: int) -> bytes:
+    assert len(key) == kappa
+    assert len(value) == 2*kappa
+    # the problem is that if key is kappa then the ciphertext is 2x kappa because of pbit
+    result = int.from_bytes(key, byteorder='big') ^ int.from_bytes(value, byteorder='big')
+    return result.to_bytes(kappa*2, 'big', signed=False)
+
+def encrypt_hash(index: int, key_one: bytes, key_two: bytes, value: bytes, kappa: int) -> bytes:
+    key_preimage = index.to_bytes(ceil(index.bit_length()/8), 'big') + key_one + key_two
+    key = sha512(key_preimage).digest()[:kappa//8]
+    key_int = int.from_bytes(key, byteorder='big')
+    result = int.from_bytes(value, byteorder='big') + key_int
+    return result.to_bytes(kappa, 'big')
+
+def decrypt_hash(index: int, key_one: bytes, key_two: bytes, value: bytes, kappa: int) -> bytes:
+    key_preimage = index.to_bytes(ceil(index.bit_length()/8), 'big') + key_one + key_two
+    key = sha512(key_preimage).digest()[:kappa//8]
+    key_int = int.from_bytes(key, byteorder='big')
+    result = int.from_bytes(value, 'big') - key_int
+    return result.to_bytes(kappa, 'big')
