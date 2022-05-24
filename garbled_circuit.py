@@ -6,13 +6,12 @@ GarbledTable = dict[tuple[int, int], bytes]
 
 class GarbledGate():
     """A representation of a garbled gate. """
-
-    gate_type: str
+    gate_type: str # XOR, AND, NAND, OR, NOR, XNOR, NOT
     encryption_method: str
     kappa: int
-    output: int
-    pbits: dict[Id, int]
-    keys: dict[Id, tuple[bytes,bytes]]
+    output: Id # id of the output wire
+    pbits: dict[Id, int] # bits used to also encrypt the actual wire value
+    keys: dict[Id, tuple[bytes,bytes]] # dict mapping each wire's id to pair of two keys/labels, one for 0 and one for 1
     garbled_table: GarbledTable
 
     def __init__(self, gate:Gate, 
@@ -58,10 +57,10 @@ class GarbledGate():
 
 class GarbledCircuit():
     circuit: Circuit
-    wires: list[Id]
-    pbits: dict[Id, int]
-    keys: dict[Id, tuple[bytes,bytes]]
-    garbled_tables: dict[Id, GarbledTable]
+    wires: list[Id] # id of wires
+    pbits: dict[Id, int] # bits used to also encrypt the actual wire value
+    keys: dict[Id, tuple[bytes,bytes]] # dict mapping each wire's id to pair of two keys/labels, one for 0 and one for 1
+    garbled_tables: dict[Id, GarbledTable] # dict mapping each wire's id to garbled table
     kappa: int
     encryp_method: str
 
@@ -88,7 +87,11 @@ class GarbledCircuit():
         self.keys = {wire_id: (gen_label(self.kappa), gen_label(self.kappa)) for wire_id in self.wires}
 
     def generate_pbits(self):
-        """Create a dict mapping each wire to a random p-bit."""
+        """
+        Create a dict mapping each wire to a random p-bit.
+
+        For each wire a random value ρ_i ∈ {0, 1} is chosen. This is used to also encrypt the actual wire value. If the actual wire value is v_i then the encrypted, or “external” value, is given by e_i = v_i ⊕ ρ_i.
+        """
         self.pbits = {wire_id: flip_coin() for wire_id in self.wires}
 
     def generate_garbled_tables(self):

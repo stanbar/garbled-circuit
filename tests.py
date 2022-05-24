@@ -1,7 +1,6 @@
 import unittest
 from utils import gen_label, encode, decode, flip_coin, encrypt_xor, encrypt_hash, decrypt_hash, gen_prime, is_prime, xor_bytes
 from algebra import PrimeCyclicGroup
-import ot
 
 class TestCircuitGenerator(unittest.TestCase):
         def test_encoding_decoding(self):
@@ -70,36 +69,6 @@ class PrimeCyclicGroupTests(unittest.TestCase):
         self.assertEqual(result, 1)
         result = group.pow(2, 3)
         self.assertEqual(result, 3)
-
-    def test_inverse(self):
-        for b in range(0,2):
-            # Setup
-            kappa = 1
-            for i in range(5, 20):
-                prime = gen_prime(i)
-                G = PrimeCyclicGroup(prime)
-
-                # Setup Alice
-                msg = [gen_label(kappa), gen_label(kappa)]
-                alice = ot.SenderOT(G, msg[0], msg[1])
-
-                # b = flip_coin()
-                # Setup Bob 
-                bob = ot.ReceiverOT(G, b)
-
-                # 1: Alice
-                c = alice.get_c()
-
-                # 2: Bob
-                pub_b = bob.get_pub_key(c)
-
-                # 3: Alice
-                (c1, e1, e2) = alice.get_encrypted_messages(pub_b)
-
-                # 4: Bob
-                msg_picked = bob.decrypt_one_message(c1, e1, e2)
-
-                self.assertEqual(msg_picked, msg[b])
 
 
     def test_group_generator(self):

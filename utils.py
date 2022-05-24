@@ -102,7 +102,7 @@ def is_prime(n: int) -> bool:
             return False
     return True
 
-def xor_bytes(seq1: bytes, seq2: bytes):
+def xor_bytes(seq1: bytes, seq2: bytes) -> bytes:
     """XOR two byte sequence."""
     assert len(seq1) == len(seq2)
     return bytes(map(operator.xor, seq1, seq2))

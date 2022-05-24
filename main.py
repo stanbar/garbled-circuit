@@ -1,14 +1,14 @@
-from circuit import Circuit, Gate,  Id, Label
+from circuit import Circuit, Gate,  Id, Label, PBit
 from garbled_circuit import GarbledTable, GarbledCircuit
-from utils import encrypt, decrypt, encode, decode
+from utils import decrypt, decode
 
 
 
 def evaluate(circuit: Circuit, 
         garbled_tables: dict[Id, GarbledTable], 
         pbits_out: dict[Id, int], 
-        a_inputs: dict[Id, tuple[Label, int]], 
-        b_inputs: dict[Id, tuple[Label, int]], 
+        a_inputs: dict[Id, tuple[Label, PBit]], 
+        b_inputs: dict[Id, tuple[Label, PBit]], 
         encryption_method: str,
         kappa: int):
     """Evaluate yao circuit with given inputs.

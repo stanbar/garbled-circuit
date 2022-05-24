@@ -3,21 +3,24 @@ import numpy as np
 import sympy
 import itertools
 
+import algebra
 
 class SSS:
     """
     This class implements the Shamir Secret Sharing scheme.
     """
     key: int
-    prime: int
+    G: algebra.PrimeCyclicGroup
     no_shares: int
     threshold: int
     coefficients: list[int]
     shares: list[int]
+    polynomial: list[int]
 
-    def __init__(self, key: int, prime: int, no_shares: int, threshold: int, coefficients: list[int] = []):
+    def __init__(self, key: int, G: algebra.PrimeCyclicGroup, no_shares: int, threshold: int, coefficients: list[int] = []):
+
+        self.G = G
         self.key = key
-        self.prime = prime
         self.no_shares = no_shares
         self.threshold = threshold
         if coefficients:
@@ -32,7 +35,7 @@ class SSS:
         """
         Generate a random coefficients for the polynomial.
         """
-        return [secrets.randbelow(self.prime) for _ in range(self.threshold-1)]
+        return [self.G.rand_int() for _ in range(self.threshold-1)]
 
 
     def generate_shares(self):
@@ -46,7 +49,7 @@ class SSS:
         """
         Evaluate the polynomial at y.
         """
-        return np.polyval(self.polynomial, y) % self.prime
+        return self.G.polyeval(self.polynomial, y)
 
     '''
         The following two functions are used to calculate the inverse modulo p
@@ -79,12 +82,14 @@ class SSS:
             if element != x:  # do not multiply the current x in the formula
                 acc = acc * element
                 if element - x >= 0:
-                    inverse = self.modinv(element - x, self.prime)
+                    inverse = self.modinv(element-x, self.G.prime) #
+                    # inverse = self.G.inv(element - x)
                 else:
-                    inverse = self.modinv(self.prime - abs(element - x),
-                                          self.prime)  # https://math.stackexchange.com/questions/355066/find-the-inverse-modulo-of-a-number-got-a-negative-result
-                acc = acc * inverse
-        return acc % self.prime
+                    inverse = self.modinv(self.G.prime - abs(element - x), self.G.prime)
+                    # inverse = self.G.inv(abs(element - x))
+ 
+                acc = self.G.mul(acc, inverse)
+        return acc
 
     def reconstruct_key(self, shares: list[tuple[int,int]]) -> int:
         """
@@ -104,27 +109,24 @@ class SSS:
             k = 0
             for index, x in enumerate(x_values):
                 b = self.calculate_lagrange_basis_polynomial(x, x_values)
-                k += b * y_values[index]
+                k = self.G.add(k, self.G.mul(b, y_values[index]))
 
-            return k % self.prime
+            return k
             
 
 
 if __name__ == "__main__":
-    sss = SSS(20, 101, 6, 3)
+    G = algebra.PrimeCyclicGroup(101)
+    sss = SSS(20, G, 6, 3)
     shares = sss.shares
     reconstructed_key = sss.reconstruct_key([(1,44), (2,2), (3,96)])
     assert reconstructed_key == sss.key
     reconstructed_key = sss.reconstruct_key([(4,23), (5,86), (6,83)])
     assert reconstructed_key == sss.key
 
-    sss = SSS(91694388364660, 91994388364979, 5, 3, [4103884901909, 5481390490034])
+    G = algebra.PrimeCyclicGroup(91994388364979)
+    sss = SSS(91694388364660, G, 5, 3, [4103884901909, 5481390490034])
     assert sss.polynomial == [4103884901909, 5481390490034, 91694388364660]
     assert sss.shares == [9285275391624, 27078320587385, 53079135586964, 87287720390361, 37709686632597]
     reconstructed_key = sss.reconstruct_key([(1, 9285275391624), (2, 27078320587385), (4, 87287720390361)])
     assert reconstructed_key == sss.key
-
-
-
-
-

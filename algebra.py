@@ -1,4 +1,5 @@
 from utils import gen_prime, randint
+import numpy as np
 import sympy
 
 PRIME_BITS=64
@@ -11,6 +12,10 @@ class PrimeCyclicGroup:
         self.prime_m2 = self.prime - 2
         self.generator = self.find_generator()
 
+
+    def add(self, a:int, b:int):
+        "Add two elements." ""
+        return (a + b) % self.prime
 
     def mul(self, a:int, b:int):
         "Multiply two elements." ""
@@ -26,7 +31,14 @@ class PrimeCyclicGroup:
 
     def inv(self, a:int):
         "Compute multiplicative inverse of an element." ""
-        return pow(a, self.prime_m2, self.prime)
+        if a < 0:
+            return pow(self.prime - a, self.prime_m2, self.prime)
+        else:
+            return pow(a, self.prime_m2, self.prime)
+
+
+    def polyeval(self,polynomial: list[int],  y: int):
+        return np.polyval(polynomial, y) % self.prime
 
     def rand_int(self):  # random int in [1, prime-1]
         "Return an random int in [1, prime - 1]." ""
